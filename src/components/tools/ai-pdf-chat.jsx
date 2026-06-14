@@ -147,6 +147,7 @@ export function AIPdfChat({ onSessionCreate }) {
   const [pdfText, setPdfText] = useState("");
   const [pageCount, setPageCount] = useState(0);
   const [parseTime, setParseTime] = useState(0);
+  const [documentId, setDocumentId] = useState(null);
   
   const [messages, setMessages] = useState([]);
   const [query, setQuery] = useState("");
@@ -231,6 +232,7 @@ export function AIPdfChat({ onSessionCreate }) {
     setPdfUrl(URL.createObjectURL(file));
     setMessages([]);
     setPdfText("");
+    setDocumentId(null);
     setIsParsing(true);
     setParseStep(0);
     setParseProgressText("Accessing Document...");
@@ -263,6 +265,34 @@ export function AIPdfChat({ onSessionCreate }) {
       setParseTime(((endTime - startTime) / 1000).toFixed(1));
 
       if (onSessionCreate) onSessionCreate(file.name, "pdf chat");
+
+      // Upload text to process/save in database once
+      try {
+        setParseProgressText("Syncing index to server...");
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+
+        const processRes = await fetch("/api/pdf/process", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            text: fullText,
+            filename: file.name,
+          }),
+        });
+
+        if (processRes.ok) {
+          const processData = await processRes.json();
+          if (processData.document_id) {
+            setDocumentId(processData.document_id);
+          }
+        }
+      } catch (procErr) {
+        console.error("Failed to index PDF on server:", procErr);
+      }
       
       await new Promise((r) => setTimeout(r, 800)); // give user time to see success
     } catch (err) {
@@ -312,7 +342,8 @@ export function AIPdfChat({ onSessionCreate }) {
         method: "POST",
         body: JSON.stringify({
           question: trimmed,
-          fullText: pdfText,
+          documentId: documentId || undefined,
+          fullText: documentId ? undefined : pdfText,
           filename: pdfFile.name,
           history: chatHistory,
         }),
@@ -385,7 +416,7 @@ export function AIPdfChat({ onSessionCreate }) {
       setIsAsking(false);
       shuffleFollowUps();
     }
-  }, [query, isAsking, pdfFile, pdfText, messages, followUpPool]);
+  }, [query, isAsking, pdfFile, pdfText, messages, followUpPool, documentId]);
 
   const handleCopy = useCallback((text, idx) => {
     navigator.clipboard.writeText(text);

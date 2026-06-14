@@ -1,5 +1,6 @@
 import { OpenAI } from "openai";
 import { checkAndDeductQuota } from "@/lib/quota-server";
+import { createAdminClient } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -157,10 +158,35 @@ export async function POST(req) {
 
   try {
     const cloned = req.clone();
-    const { question, fullText, history = [], filename } = await cloned.json();
+    const { question, fullText, history = [], filename, documentId } = await cloned.json();
 
-    if (!question || !fullText) {
-      return new Response(JSON.stringify({ error: "Missing question or text" }), { status: 400 });
+    let textToUse = fullText;
+
+    if (!textToUse && documentId) {
+      let supabase;
+      try {
+        supabase = createAdminClient();
+      } catch (e) {
+        return new Response(JSON.stringify({ error: "Server configuration error: Supabase key is required." }), { status: 500 });
+      }
+
+      const { data: chunks, error: chunksError } = await supabase
+        .from("chunks")
+        .select("content")
+        .eq("document_id", documentId)
+        .order("chunk_index", { ascending: true });
+
+      if (chunksError) {
+        throw new Error(`Database Error (Chunks fetch): ${chunksError.message}`);
+      }
+
+      if (chunks && chunks.length > 0) {
+        textToUse = chunks.map((c) => c.content).join("\n\n");
+      }
+    }
+
+    if (!question || !textToUse) {
+      return new Response(JSON.stringify({ error: "Missing question or document text." }), { status: 400 });
     }
 
     // Auth + quota check
@@ -173,7 +199,7 @@ export async function POST(req) {
     }
 
     // 1. Adaptive context with BM25 ranking
-    const { context, mode: contextMode, lowConfidence, citedPages = [] } = getAdaptiveContext(question, fullText);
+    const { context, mode: contextMode, lowConfidence, citedPages = [] } = getAdaptiveContext(question, textToUse);
 
     // 2. Prune history (last 3 exchanges = 6 messages)
     const prunedHistory = history.slice(-6);
@@ -219,7 +245,7 @@ ${context}`;
           { role: "user", content: question },
         ],
         stream: true,
-        max_tokens: isSummary ? 4096 : 2048,
+        max_tokens: isSummary ? 3072 : 2048,
         temperature: 0.1,
       });
 

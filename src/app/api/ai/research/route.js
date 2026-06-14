@@ -86,7 +86,8 @@ MANDATORY RULES:
 3. If BNS/BNSS/BSA are applicable (post-2023 criminal matters), cite those instead of IPC/CrPC/IEA.
 4. NEVER use generic disclaimers like "you should consult a lawyer," "seek legal advice," or "I am an AI." Provide the legal answer directly and authoritatively.
 5. If a fact-specific query is asked (involving specific names, dates, or amounts), clearly distinguish the general legal principle from what applies to the specific facts.
-6. Use precise legal terminology. Do not simplify or paraphrase statutes beyond what is necessary for clarity.`;
+6. Use precise legal terminology. Do not simplify or paraphrase statutes beyond what is necessary for clarity.
+7. Be extremely concise, direct, and authoritative. Avoid verbose legal boilerplate and unnecessary filler.`;
 
     const createStream = () =>
       client.chat.completions.create({
@@ -95,7 +96,7 @@ MANDATORY RULES:
           { role: "system", content: systemPrompt },
           { role: "user", content: query },
         ],
-        max_tokens: 16384,
+        max_tokens: 4096,
         temperature: 0.1,
         stream: true,
       });

@@ -8,6 +8,17 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 export const supabase = createClient(
-  supabaseUrl || "https://placeholder.supabase.co", 
-  supabaseAnonKey || "placeholder-key"
+  supabaseUrl || "https://placeholder.supabase.co",
+  supabaseAnonKey || "placeholder-key",
+  {
+    auth: {
+      // Implicit flow: tokens come back in the URL hash fragment (#access_token=…)
+      // so the client can parse them synchronously without a server round-trip.
+      // PKCE (the v2 default) would put a `?code=` param that needs async exchange,
+      // causing a race-condition on the dashboard before getSession() resolves.
+      flowType: "implicit",
+      detectSessionInUrl: true,
+      persistSession: true,
+    },
+  }
 );

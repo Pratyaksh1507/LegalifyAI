@@ -239,7 +239,8 @@ export async function POST(req) {
 
     // Build message array
     let apiMessages = [];
-    apiMessages.push({ role: "system", content: SYSTEM_PROMPTS[mode] });
+    const concisenessInstruction = "\n\nCRITICAL CONCISENESS RULE: Be extremely direct, focused, and concise. Avoid introductory or concluding conversational padding. Focus strictly on legal value.";
+    apiMessages.push({ role: "system", content: SYSTEM_PROMPTS[mode] + concisenessInstruction });
 
     if (history && history.length > 0) {
       // Follow-up chat — prepend facts for context
@@ -262,7 +263,7 @@ export async function POST(req) {
       client.chat.completions.create({
         model,
         messages: apiMessages,
-        max_tokens: 8192,
+        max_tokens: 4096,
         temperature: 0.4,
         stream: true,
       });

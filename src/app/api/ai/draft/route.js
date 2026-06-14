@@ -40,15 +40,15 @@ export async function POST(req) {
     const quotaResult = await checkAndDeductQuota(req);
     if (quotaResult.error) return quotaResult.error;
 
-    const apiKey = process.env.OPENROUTER_API_KEY;
+    const apiKey = process.env.NVIDIA_API_KEY;
     if (!apiKey) {
       return new Response(
-        JSON.stringify({ error: "OPENROUTER_API_KEY is not configured in .env.local" }),
+        JSON.stringify({ error: "NVIDIA_API_KEY is not configured in .env.local" }),
         { status: 500, headers: { "Content-Type": "application/json" } },
       );
     }
 
-    const model = "nex-agi/nex-n2-pro:free";
+    const model = process.env.NVIDIA_MODEL || "meta/llama-3.3-70b-instruct";
 
     const systemPrompt = `You are an expert Indian Legal Draftsman. Draft a concise, court-ready legal document based on the user's provided facts.
 
@@ -124,7 +124,7 @@ RULES:
     }, 55000); // 55 second hard limit
 
     const client = new OpenAI({
-      baseURL: "https://openrouter.ai/api/v1",
+      baseURL: "https://integrate.api.nvidia.com/v1",
       apiKey: apiKey,
     });
 
@@ -136,8 +136,7 @@ RULES:
             { role: "system", content: finalSystemPrompt },
             { role: "user", content: `Here are the facts for the draft:\n\n${facts}` },
           ],
-          temperature: 0.5,
-          top_p: 0.9,
+          temperature: 0.3,
           max_tokens: 2500, // Court petitions are ~800-1200 tokens; 2500 is a safe ceiling
           stream: true,
         },

@@ -58,7 +58,7 @@ export default function LoginPage() {
     setError("");
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -72,7 +72,11 @@ export default function LoginPage() {
           },
         });
         if (error) throw error;
-        setError("Check your email for a confirmation link!");
+        if (data?.session) {
+          router.push("/dashboard");
+        } else {
+          setError("Check your email for a confirmation link!");
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email,
@@ -118,8 +122,29 @@ export default function LoginPage() {
   const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => {
-    setMounted(true);
-  }, []);
+    let active = true;
+
+    // Check if user is already signed in
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session && active) {
+        router.push("/dashboard");
+      }
+    };
+
+    checkSession();
+
+    const timer = setTimeout(() => {
+      if (active) {
+        setMounted(true);
+      }
+    }, 0);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [router]);
 
   const isLight = mounted && theme === "light";
 

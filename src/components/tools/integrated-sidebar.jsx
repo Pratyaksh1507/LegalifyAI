@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import { Search, Save, Filter, Loader2, Sparkles, BookOpen, AlertTriangle } from "lucide-react";
+import React, { useState, useRef, useEffect } from "react";
+import { Search, Save, Filter, Loader2, BookOpen, AlertTriangle } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { supabase } from "@/lib/supabase";
@@ -16,16 +16,14 @@ export function IntegratedSidebar() {
   const [searchError, setSearchError] = useState("");
   const abortRef = useRef(null);
 
-  // Notes State
+  // Notes State — start with "" on both server and client to avoid hydration mismatch,
+  // then load from localStorage after mount.
   const [notes, setNotes] = useState("");
   const [isSaved, setIsSaved] = useState(false);
 
-  // Load notes from local storage on mount
   useEffect(() => {
-    const savedNotes = localStorage.getItem("legalify_case_notes");
-    if (savedNotes) {
-      setNotes(savedNotes);
-    }
+    const saved = localStorage.getItem("legalify_case_notes");
+    if (saved) setNotes(saved);
   }, []);
 
   const handleSaveNotes = () => {

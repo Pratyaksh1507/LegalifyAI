@@ -111,48 +111,58 @@ export default function DashboardPage() {
   useEffect(() => {
     let mounted = true;
 
+    const applySession = (session) => {
+      if (!session?.user || !mounted) return;
+      const user = session.user;
+      const name =
+        user.user_metadata?.full_name ||
+        user.user_metadata?.name ||
+        user.email?.split("@")[0] ||
+        "User";
+      setFullName(name);
+      setEditName(name);
+      setUserName(name.split(" ")[0]);
+      setUserInitial(name.charAt(0).toUpperCase());
+      setUserEmail(user.email || "");
+      setAvatarUrl(user.user_metadata?.avatar_url || "");
+      setUserRole(user.user_metadata?.role || "user");
+      if (session.access_token) {
+        fetchCredits(session.access_token);
+      }
+    };
+
+    // Subscribe FIRST so we never miss the SIGNED_IN event fired when
+    // Supabase parses the implicit-flow hash (#access_token=…) on mount.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mounted) return;
+      if (event === "SIGNED_IN" && session) {
+        applySession(session);
+      } else if (event === "SIGNED_OUT") {
+        router.push("/login");
+      }
+    });
+
+    // Also do an immediate check for an already-stored session
+    // (returning user whose session is persisted in localStorage).
     const checkAuth = async () => {
-      // getSession automatically parses the URL hash on OAuth redirects
       const { data: { session } } = await supabase.auth.getSession();
-      
+
       if (session?.user) {
-        const user = session.user;
-        const name =
-          user.user_metadata?.full_name ||
-          user.user_metadata?.name ||
-          user.email?.split("@")[0] ||
-          "User";
-        if (mounted) {
-          setFullName(name);
-          setEditName(name);
-          setUserName(name.split(" ")[0]);
-          setUserInitial(name.charAt(0).toUpperCase());
-          setUserEmail(user.email || "");
-          setAvatarUrl(user.user_metadata?.avatar_url || "");
-          setUserRole(user.user_metadata?.role || "user");
-          
-          if (session.access_token) {
-            fetchCredits(session.access_token);
-          }
-        }
+        applySession(session);
       } else {
-        // If no session and no access_token in URL hash, redirect to login
-        if (mounted && !window.location.hash.includes("access_token")) {
+        // If the URL hash contains an access_token, Supabase is about to fire
+        // SIGNED_IN via onAuthStateChange — don't redirect yet.
+        const hasOAuthHash =
+          typeof window !== "undefined" &&
+          window.location.hash.includes("access_token");
+
+        if (!hasOAuthHash && mounted) {
           router.push("/login");
         }
       }
     };
 
     checkAuth();
-
-    // Listen for auth state changes (e.g., when hash is parsed and user is signed in)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_IN" && session) {
-        checkAuth();
-      } else if (event === "SIGNED_OUT") {
-        if (mounted) router.push("/login");
-      }
-    });
 
     return () => {
       mounted = false;

@@ -45,12 +45,10 @@ EXPLANATION: [why this is an issue and its potential legal consequences]
 ISSUE_END=
 
 ==== REDLINED ====
-Provide a redlined version of the FULL original document with ALL changes tracked inline. Use this exact format:
+Provide a redlined version of the document. To keep this fast and focused, ONLY include the specific paragraphs, sections, or clauses that contain edits. Do NOT output the entire unchanged document. Separate each modified section with a horizontal rule (---) and prefix it with the section/clause name or page number. Use this exact format:
 - For text that should be REMOVED: wrap in {{DEL}}text to remove{{/DEL}}
 - For text that should be ADDED as replacement: wrap in {{ADD}}suggested replacement text{{/ADD}}
 - Show the replacement IMMEDIATELY after the deletion, like: {{DEL}}old text{{/DEL}}{{ADD}}new text{{/ADD}}
-- Keep ALL unchanged text exactly as-is.
-- You MUST include the full document, not just snippets.
 - EVERY issue listed in the ISSUES section MUST be reflected in this redlined version.
 
 Example:
@@ -119,7 +117,7 @@ export async function POST(req) {
     const createStream = () => client.chat.completions.create({
       model,
       messages: [{ role: "user", content: prompt }],
-      max_tokens: 16384,
+      max_tokens: 6144,
       temperature: 0.3,
       stream: true,
     });
